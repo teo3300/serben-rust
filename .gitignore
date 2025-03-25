@@ -1,0 +1,6 @@
+# build output
+/target
+# user content
+/content
+# fuckit
+Cargo.lock
