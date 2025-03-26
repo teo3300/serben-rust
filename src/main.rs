@@ -82,7 +82,7 @@ fn get_no_ext(filepath: &str) -> Result<Response<Body>, Infallible> {
 
 fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
     println!("GET: [bin] {}",filepath);
-    
+
     return if Path::new(&filepath).exists() {
         match fs::read(&filepath) {
             Ok(content) => Ok(Response::new(Body::from(content))),
@@ -107,18 +107,21 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
     }
 
     // Use ImageMagick to resize the image
-    let mut processed  = match Command::new("magick")
-        .arg(original_filepath)
+    let mut command = Command::new("convert");
+    command.arg(original_filepath)
         .arg("-resize")
         .arg("30%")
         .arg("-quality")
         .arg("80%")
-        .arg("jpeg:-")
-        .stdout(Stdio::piped())
-        .spawn()
+        .arg("jpeg:-");
+
+    let mut processed  = match command.stdout(Stdio::piped()).spawn()
     {
         Ok(process) => process,
-        Err(err) => return server_error(err)
+        Err(err) => {
+            println!("Running {:?}", command);
+            return server_error(err)
+        }
     };
 
     // Read the output from the ImageMagick process
