@@ -113,6 +113,8 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
         .arg("50%")
         .arg("-resize")
         .arg("512x512<")    // never resize smaller than 512x512
+        .arg("-resize")
+        .arg("1024x1024>")
         .arg("-quality")
         .arg("50%")
         .arg("jpeg:-");
