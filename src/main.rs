@@ -32,6 +32,7 @@ fn server_error <T: std::fmt::Debug>(err: T) -> Result<Response<Body>, Infallibl
 }
 
 fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
+    println!("GET: [dir] {}",filepath);
     let path = Path::new(&filepath);
     let mut body = String::new();
     body.push_str("<html><body>");
@@ -57,6 +58,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
 }
 
 fn get_text_file(filepath: &str) -> Result<Response<Body>, Infallible> {
+    println!("GET: [txt] {}",filepath);
     let path = Path::new(&filepath);
     return if path.exists() {
         match fs::read_to_string(&filepath) {
@@ -79,6 +81,8 @@ fn get_no_ext(filepath: &str) -> Result<Response<Body>, Infallible> {
 }
 
 fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
+    println!("GET: [bin] {}",filepath);
+    
     return if Path::new(&filepath).exists() {
         match fs::read(&filepath) {
             Ok(content) => Ok(Response::new(Body::from(content))),
@@ -95,6 +99,7 @@ fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
 use std::process::Command;
 
 fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
+    println!("GET: [tmb] {}",filepath);
     let original_filepath = filepath.strip_suffix(&format!(".{}",THUMBNAIL_EXTENSION)).unwrap_or(filepath);
 
     if !Path::new(original_filepath).exists() {
