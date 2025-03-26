@@ -8,6 +8,7 @@ use std::path::Path;
 
 static SERVE_ROOT: &str = "content/";
 static THUMBNAIL_EXTENSION: &str = "thumbnail";
+static SOURCE_EXTENSION: &str = "source";
 
 fn get_404() -> Result<Response<Body>, Infallible> {
     let filepath = format!("{}404.html", SERVE_ROOT);
@@ -162,7 +163,10 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
                     | Some("xml")
                     | Some("rss") => get_text_file(&filepath),
                     Some(ext) if ext == THUMBNAIL_EXTENSION => get_thumbnail(&filepath),
+                    Some(ext) if ext == SOURCE_EXTENSION => get_text_file(
+                        &filepath.strip_suffix(&format!(".{}", SOURCE_EXTENSION)).unwrap()),
                     _ => get_binary_file(&filepath),
+                    // TODO: dang, I am really tempted to add arbitrary shell command execution here
                 }
             } else {
                 get_no_ext(&filepath)
