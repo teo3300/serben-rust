@@ -110,9 +110,11 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
     let mut command = Command::new("convert");
     command.arg(original_filepath)
         .arg("-resize")
-        .arg("30%")
+        .arg("50%")
+        .arg("-resize")
+        .arg("512x512<")    // never resize smaller than 512x512
         .arg("-quality")
-        .arg("80%")
+        .arg("50%")
         .arg("jpeg:-");
 
     let mut processed  = match command.stdout(Stdio::piped()).spawn()
