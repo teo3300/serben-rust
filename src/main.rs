@@ -7,10 +7,16 @@ use std::path::Path;
 static SERVE_ROOT: &str = "content/";
 
 fn get_404() -> Result<Response<Body>, Infallible> {
-    Ok(Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .body(Body::from("Not Found"))
-        .unwrap())
+    let filepath = format!("{}404.html", SERVE_ROOT);
+    let path = Path::new(&filepath);
+    return if path.exists() {
+        get_text_file(&filepath)
+    } else {
+        Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from("Not Found"))
+            .unwrap())
+    }
 }
 
 fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
@@ -39,12 +45,17 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
 }
 
 fn get_text_file(filepath: &str) -> Result<Response<Body>, Infallible> {
-    match fs::read_to_string(filepath) {
-        Ok(content) => Ok(Response::new(Body::from(content))),
-        Err(_) => Ok(Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::from("Failed to read the file."))
-            .unwrap()),
+    let path = Path::new(&filepath);
+    return if path.exists() {
+        match fs::read_to_string(&filepath) {
+            Ok(content) => Ok(Response::new(Body::from(content))),
+            Err(_) => Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from("Failed to read the file."))
+                .unwrap()),
+        }
+    } else {
+        get_404()
     }
 }
 
@@ -59,17 +70,12 @@ fn get_dir_or_file(filepath: &str, ext: Option<&str>) -> Result<Response<Body>, 
         Some(_) => filepath.to_string(),
         None => format!("{}.html", &filepath),
     };
-    let path = Path::new(&filepath);
+    return get_text_file(&filepath);
 
-    if path.exists() {
-        get_text_file(&filepath)
-    } else {
-        get_404()
-    }
 }
 
 fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
-    if Path::new(&filepath).exists() {
+    return if Path::new(&filepath).exists() {
         match fs::read(&filepath) {
             Ok(content) => Ok(Response::new(Body::from(content))),
             Err(_) => Ok(Response::builder()
@@ -85,7 +91,7 @@ fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
 async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let path = req.uri().path();
 
-    match path {
+    return match path {
         "/" => get_dir_or_file(format!("{}index.html", SERVE_ROOT).as_str(), Some("html")),
         "/*" =>get_dir(SERVE_ROOT),
         _ => {
@@ -110,7 +116,7 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
 
 #[tokio::main]
 async fn main() {
-    let addr = ([127, 0, 0, 1], 8080).into();
+    let addr = ([0, 0, 0, 0], 8123).into();
 
     let make_svc = make_service_fn(|_conn| async {
         Ok::<_, Infallible>(service_fn(handle_request))

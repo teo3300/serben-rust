@@ -1,0 +1,22 @@
+# This file is inteneed as a template, you should copy it to the parent and run it from there
+# I usuallly store all repos in '~/git' so I just move this file to or its content to the compose that manages
+# containers in the form of a git repo
+
+# I usually use this network for traefik managing
+networks:
+  frontend:
+   external: true
+   name: ${USER}_frontend
+
+services:
+  serben-rust:
+    build:
+      context: ./serben-rust
+    container_name: 'serben-rust'
+    ## If, instead of traefik, you prefer port forwarding
+    # ports:
+    #   - 80:8123
+    volumes:
+      - ./content:/content
+    networks:
+      - frontend
