@@ -1,10 +1,13 @@
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
+use std::io::Read;
+use std::process::Stdio;
 use std::convert::Infallible;
 use std::fs;
 use std::path::Path;
 
 static SERVE_ROOT: &str = "content/";
+static THUMBNAIL_EXTENSION: &str = "thumbnail";
 
 fn get_404() -> Result<Response<Body>, Infallible> {
     let filepath = format!("{}404.html", SERVE_ROOT);
@@ -14,9 +17,16 @@ fn get_404() -> Result<Response<Body>, Infallible> {
     } else {
         Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Body::from("Not Found"))
+            .body(Body::from("404 Not Found."))
             .unwrap())
     }
+}
+
+fn server_error() -> Result<Response<Body>, Infallible>  {
+    return Ok(Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .body(Body::from("Internal server error."))
+        .unwrap());
 }
 
 fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
@@ -49,28 +59,20 @@ fn get_text_file(filepath: &str) -> Result<Response<Body>, Infallible> {
     return if path.exists() {
         match fs::read_to_string(&filepath) {
             Ok(content) => Ok(Response::new(Body::from(content))),
-            Err(_) => Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from("Failed to read the file."))
-                .unwrap()),
+            Err(_) => server_error(),
         }
     } else {
         get_404()
     }
 }
 
-fn get_dir_or_file(filepath: &str, ext: Option<&str>) -> Result<Response<Body>, Infallible> {
-    let path = Path::new(&filepath);
+fn get_no_ext(filepath: &str) -> Result<Response<Body>, Infallible> {
 
-    if path.is_dir() {
+    if Path::new(&filepath).is_dir() {
         return get_dir(&filepath);
+    } else {
+        return get_text_file(&format!("{}.html", &filepath));
     }
-    
-    let filepath = match ext {
-        Some(_) => filepath.to_string(),
-        None => format!("{}.html", &filepath),
-    };
-    return get_text_file(&filepath);
 
 }
 
@@ -88,11 +90,51 @@ fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
     }
 }
 
+use std::process::Command;
+
+fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
+    let original_filepath = filepath.strip_suffix(&format!(".{}",THUMBNAIL_EXTENSION)).unwrap_or(filepath);
+
+    if !Path::new(original_filepath).exists() {
+        return get_404();
+    }
+
+    // Use ImageMagick to resize the image
+    let mut processed  = match Command::new("magick")
+        .arg(original_filepath)
+        .arg("-resize")
+        .arg("30%")
+        .arg("-quality")
+        .arg("80%")
+        .arg("jpeg:-")
+        .stdout(Stdio::piped())
+        .spawn()
+    {
+        Ok(process) => process,
+        Err(_) => return server_error()
+    };
+
+    // Read the output from the ImageMagick process
+    let mut output = Vec::new();
+    if let Some(mut stdout) = processed.stdout.take() {
+        if stdout.read_to_end(&mut output).is_err() {
+            return server_error();
+        }
+    }
+
+    if let Err(_) = processed.wait() {
+        return server_error();
+    }
+
+    return Ok(Response::new(Body::from(output)))
+
+}
+
 async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let path = req.uri().path();
 
     return match path {
-        "/" => get_dir_or_file(format!("{}index.html", SERVE_ROOT).as_str(), Some("html")),
+        "/" => get_no_ext(format!("{}index", SERVE_ROOT).as_str()),
         "/*" =>get_dir(SERVE_ROOT),
         _ => {
             let filename = &path["/".len()..];
@@ -105,10 +147,11 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
                     | Some("js")
                     | Some("xml")
                     | Some("rss") => get_text_file(&filepath),
+                    Some(ext) if ext == THUMBNAIL_EXTENSION => get_thumbnail(&filepath),
                     _ => get_binary_file(&filepath),
                 }
             } else {
-                get_dir_or_file(&filepath, None)
+                get_no_ext(&filepath)
             }
         },
     }
