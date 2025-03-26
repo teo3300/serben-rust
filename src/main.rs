@@ -22,11 +22,13 @@ fn get_404() -> Result<Response<Body>, Infallible> {
     }
 }
 
-fn server_error() -> Result<Response<Body>, Infallible>  {
-    return Ok(Response::builder()
+fn server_error <T: std::fmt::Debug>(err: T) -> Result<Response<Body>, Infallible>  {
+    let ret_val = Ok(Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
         .body(Body::from("Internal server error."))
         .unwrap());
+    println!("Error: {:?}", err);
+    return ret_val;
 }
 
 fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
@@ -59,7 +61,7 @@ fn get_text_file(filepath: &str) -> Result<Response<Body>, Infallible> {
     return if path.exists() {
         match fs::read_to_string(&filepath) {
             Ok(content) => Ok(Response::new(Body::from(content))),
-            Err(_) => server_error(),
+            Err(err) => server_error(err),
         }
     } else {
         get_404()
@@ -111,19 +113,19 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
         .spawn()
     {
         Ok(process) => process,
-        Err(_) => return server_error()
+        Err(err) => return server_error(err)
     };
 
     // Read the output from the ImageMagick process
     let mut output = Vec::new();
     if let Some(mut stdout) = processed.stdout.take() {
-        if stdout.read_to_end(&mut output).is_err() {
-            return server_error();
+        if let Err(err) = stdout.read_to_end(&mut output) {
+            return server_error(err);
         }
     }
 
-    if let Err(_) = processed.wait() {
-        return server_error();
+    if let Err(err) = processed.wait() {
+        return server_error(err);
     }
 
     return Ok(Response::new(Body::from(output)))

@@ -13,7 +13,8 @@ RUN rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/cargo/bin/serben-rust /usr/local/bin/serben-rust
 
-RUN apt-get install imagemagick
+RUN apt-get update && apt-get install -y imagemagick
+
 RUN mkdir content
 
 CMD ["serben-rust"]
