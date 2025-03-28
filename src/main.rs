@@ -37,7 +37,21 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
     println!("GET: [dir] {}", filepath);
     let path = Path::new(&filepath);
     let mut body = String::new();
-    body.push_str("<html><body>");
+    body.push_str("<html><head><style>
+    .thumbnail-container {
+        width: 100px;
+        height: 100px;
+        background-color: grey;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .thumbnail-container img {
+        max-height: 100%;
+        max-width: 100%;
+    }
+</style></head><body>");
     body.push_str(&format!(
         "<h1>Index: /{}</h1>",
         path.to_str().unwrap().strip_prefix(unsafe { SERVE_ROOT }).unwrap()
@@ -76,7 +90,10 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             | Some("gif")
             | Some("tiff") => {
                 body.push_str(&format!(
-                    "<img src=\"/{}.thumbnail\" alt=\"preview\" style=\"max-height:100px;max-width:100px;\"> <a href=\"/{}\">{}</a><br>",
+                    "<div class=\"thumbnail-container\">\
+                        <img src=\"/{}.thumbnail\" alt=\"preview\">\
+                    </div>\
+                    <a href=\"/{}\">{}</a><br>",
                     path, path, filename
                 ));
             }
@@ -139,7 +156,7 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
     let mut command = Command::new("convert");
     command.arg(original_filepath)
         .arg("-resize")
-        .arg("5%")
+        .arg("10%")
         .arg("-resize")
         .arg("200x200<")    // never resize smaller than 512x512
         .arg("-resize")
