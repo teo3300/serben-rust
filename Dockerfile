@@ -17,4 +17,4 @@ RUN apt-get update && apt-get install -y imagemagick
 
 RUN mkdir content
 
-CMD ["serben-rust"]
+CMD ["serben-rust", "content/"]
