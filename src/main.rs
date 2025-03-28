@@ -50,7 +50,11 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
         None => Path::new("/").to_str().unwrap(),
     };
     body.push_str(&format!("<a href=\"/{}\">..</a><br>", parent));
-    for entry in fs::read_dir(&path).unwrap() {
+    let mut entries = Vec::from_iter(fs::read_dir(&path).unwrap());
+    entries.sort_by(
+        |a, b|
+        a.as_ref().unwrap().file_name().cmp(&b.as_ref().unwrap().file_name()));
+    for entry in entries {
         let entry = entry.unwrap();
         let filename = entry.file_name();
         let filename = filename.to_str().unwrap();
@@ -72,7 +76,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             | Some("gif")
             | Some("tiff") => {
                 body.push_str(&format!(
-                    "<img src=\"/{}.thumbnail\" alt=\"preview\" style=\"width:50px;height:auto;\"> <a href=\"/{}\">{}</a><br>",
+                    "<img src=\"/{}.thumbnail\" alt=\"preview\" style=\"max-height:100px;max-width:100px;\"> <a href=\"/{}\">{}</a><br>",
                     path, path, filename
                 ));
             }
