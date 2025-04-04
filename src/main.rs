@@ -39,8 +39,8 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
     let mut body = String::new();
     body.push_str("<html><head><style>
     .thumbnail-container {
-        width: 100px;
-        height: 100px;
+        width: 200px;
+        height: 200px;
         background-color: grey;
         display: flex;
         align-items: center;
