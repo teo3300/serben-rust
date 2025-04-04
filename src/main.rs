@@ -1,8 +1,6 @@
 use std::env; // Import the environment module for argument parsing
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
-use std::io::Read;
-use std::process::Stdio;
 use std::convert::Infallible;
 use std::fs;
 use std::path::Path;
@@ -144,49 +142,48 @@ fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
 use std::process::Command;
 
 fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
-    println!("GET: [tmb] {}",filepath);
-    let original_filepath = filepath.strip_suffix(&format!(".{}",THUMBNAIL_EXTENSION)).unwrap_or(filepath);
+    println!("GET: [tmb] {}", filepath);
+    let original_filepath = filepath.strip_suffix(&format!(".{}", THUMBNAIL_EXTENSION)).unwrap_or(filepath);
 
     if !Path::new(original_filepath).exists() {
         return get_404();
     }
 
-    // Use ImageMagick to resize the image
+    // Construct the thumbnail path
+    let thumbnail_dir = format!("{}thumbnails/", unsafe { SERVE_ROOT });
+    let thumbnail_path = format!("{}{}", thumbnail_dir, original_filepath.strip_prefix(unsafe { SERVE_ROOT }).unwrap().replace("/","_"));
+
+    // Ensure the thumbnail directory exists
+    if !Path::new(&thumbnail_dir).exists() {
+        if let Err(err) = fs::create_dir_all(&thumbnail_dir) {
+            return server_error(err);
+        }
+    }
+
+    // Check if the thumbnail already exists
+    if Path::new(&thumbnail_path).exists() {
+        return get_binary_file(&thumbnail_path);
+    }
+
+    // Use ImageMagick to resize the image and save it to the thumbnail path
     let mut command = Command::new("convert");
     command.arg(original_filepath)
         .arg("-resize")
         .arg("10%")
         .arg("-resize")
-        .arg("200x200<")    // never resize smaller than 512x512
+        .arg("200x200<")    // never resize smaller than 200x200
         .arg("-resize")
         .arg("500x500>")
         .arg("-quality")
         .arg("20%")
-        .arg("jpeg:-");
+        .arg(&thumbnail_path);
 
-    let mut processed  = match command.stdout(Stdio::piped()).spawn()
-    {
-        Ok(process) => process,
-        Err(err) => {
-            println!("Running {:?}", command);
-            return server_error(err)
-        }
-    };
-
-    // Read the output from the ImageMagick process
-    let mut output = Vec::new();
-    if let Some(mut stdout) = processed.stdout.take() {
-        if let Err(err) = stdout.read_to_end(&mut output) {
-            return server_error(err);
-        }
-    }
-
-    if let Err(err) = processed.wait() {
+    if let Err(err) = command.status() {
         return server_error(err);
     }
 
-    return Ok(Response::new(Body::from(output)))
-
+    // Serve the generated thumbnail
+    get_binary_file(&thumbnail_path)
 }
 
 async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -195,6 +192,7 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
     return match path {
         "/" => get_no_ext(format!("{}index", unsafe { SERVE_ROOT }).as_str()),
         "/*" =>get_dir(unsafe { SERVE_ROOT }),
+        "thumbnails" => get_404(),
         _ => {
             let filename = &path["/".len()..];
             let filepath = format!("{}{}", unsafe { SERVE_ROOT }, filename);
