@@ -99,7 +99,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             }
         }
     }
-    body.push_str("</body></html>");
+    body.push_str("</body><footer><a href=\"https://github.com/teo3300/serben-rust\">serben-rust<a/><footer/></html>");
     return Ok(Response::new(Body::from(body)));
 }
 
