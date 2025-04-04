@@ -193,6 +193,7 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
         "/" => get_no_ext(format!("{}index", unsafe { SERVE_ROOT }).as_str()),
         "/*" =>get_dir(unsafe { SERVE_ROOT }),
         "/thumbnails" => get_404(),
+        path if path.starts_with("/thumbnails/") => get_404(), // Return 404 for any path starting with "/thumbnails"
         _ => {
             let filename = &path["/".len()..];
             let filepath = format!("{}{}", unsafe { SERVE_ROOT }, filename);
