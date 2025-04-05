@@ -19,4 +19,4 @@ RUN mkdir content
 
 RUN mkdir content/thumbnails
 
-CMD ["serben-rust", "content/"]
+CMD ["serben-rust", "/content/"]

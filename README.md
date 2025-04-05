@@ -16,14 +16,16 @@ Serve resources in the `content/` folder
 
 ## Installation and running
 ### Bare metal
+The serving path must be specified when running bare metal
 > Build and run the project from within the repo
 ```sh
 mkdir content
-ccargo run --release
+cargo run --release -- <serving_directory>/
 ```
 Or do some other fancy stuff, I am not stopping you
 
 ### Docker
+When running in docker the path is fixed to `/content/` and you must mount your directory as a volume
 > use the template docker compose to build the image and run the container
 ```sh
 cp docker-compose.yml ..
@@ -32,6 +34,8 @@ mkdir content
 docker-compose up -d
 ```
 (In this case use the parent directory as the project directory for docker).
+
+**Manually create the "content" directory** to avoid ownership problems when editing files, not necessary, but highly recommended
 
 I use traefik for routing and certificate management, on the network `${USER}_frontend` so be sure to set this properly
 
