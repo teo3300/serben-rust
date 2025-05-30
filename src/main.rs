@@ -1,4 +1,5 @@
-use std::env; // Import the environment module for argument parsing
+use std::env; use hyper::header::{CACHE_CONTROL};
+// Import the environment module for argument parsing
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
 use std::convert::Infallible;
@@ -88,7 +89,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             | Some("gif") => {
                 body.push_str(&format!(
                     "<div class=\"thumbnail-container\">\
-                        <img src=\"/{}.thumbnail\" alt=\"preview\">\
+                        <img src=\"/{}.thumbnail\" max-age=\"3600\" alt=\"preview\">\
                     </div>\
                     <a href=\"/{}\">{}</a><br>",
                     path, path, filename
@@ -131,7 +132,11 @@ fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
 
     return if Path::new(&filepath).exists() {
         match fs::read(&filepath) {
-            Ok(content) => Ok(Response::new(Body::from(content))),
+            Ok(content) => 
+                Ok(Response::builder()
+                    .header(CACHE_CONTROL, "public, max-age=3600")
+                    .body(Body::from(content))
+                    .unwrap()),
             Err(err) => server_error(err),
         }
     } else {
@@ -142,7 +147,7 @@ fn get_binary_file(filepath: &str) -> Result<Response<Body>, Infallible> {
 use std::process::Command;
 
 fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
-    println!("GET: [tmb] {}", filepath);
+    // println!("? GET: [tmb] {}", filepath);
     let original_filepath = filepath.strip_suffix(&format!(".{}", THUMBNAIL_EXTENSION)).unwrap_or(filepath);
 
     if !Path::new(original_filepath).exists() {
@@ -150,7 +155,7 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
     }
 
     // Construct the thumbnail path
-    let thumbnail_dir = format!("{}thumbnails/", unsafe { SERVE_ROOT });
+    let thumbnail_dir = format!("{}cache/thumbnails/", unsafe { SERVE_ROOT });
     let thumbnail_path = format!("{}{}", thumbnail_dir, original_filepath.strip_prefix(unsafe { SERVE_ROOT }).unwrap().replace("/","_"));
 
     // Ensure the thumbnail directory exists
@@ -162,6 +167,7 @@ fn get_thumbnail(filepath: &str) -> Result<Response<Body>, Infallible> {
 
     // Check if the thumbnail already exists
     if Path::new(&thumbnail_path).exists() {
+        // Serve the generated thumbnail
         return get_binary_file(&thumbnail_path);
     }
 
@@ -191,9 +197,9 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
 
     return match path {
         "/" => get_no_ext(format!("{}index", unsafe { SERVE_ROOT }).as_str()),
-        "/*" =>get_dir(unsafe { SERVE_ROOT }),
-        "/thumbnails" => get_404(),
-        path if path.starts_with("/thumbnails/") => get_404(), // Return 404 for any path starting with "/thumbnails"
+        "/*" => get_dir(unsafe { SERVE_ROOT }),
+        "/cache" => get_404(),                                  // Return 404 when listing cache
+        path if path.starts_with("/cache/") => get_404(), // Return 404 for any path starting with "/thumbnails"
         _ => {
             let filename = &path["/".len()..];
             let filepath = format!("{}{}", unsafe { SERVE_ROOT }, filename);
