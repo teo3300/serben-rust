@@ -109,7 +109,11 @@ fn get_text_file(filepath: &str) -> Result<Response<Body>, Infallible> {
     let path = Path::new(&filepath);
     return if path.exists() {
         match fs::read_to_string(&filepath) {
-            Ok(content) => Ok(Response::new(Body::from(content))),
+            Ok(content) => 
+                Ok(Response::builder()
+                    .header(CACHE_CONTROL, "public, max-age=600")
+                    .body(Body::from(content))
+                    .unwrap()),
             Err(err) => server_error(err),
         }
     } else {
