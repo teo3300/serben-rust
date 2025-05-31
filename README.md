@@ -4,11 +4,11 @@ A really simple http server with mimnimal capabilities for serving files
 
 ## Working
 
-Serve resources in the `content/` folder
+Serve resources in the `<serving_directory>/` folder
 - `/` requests `index.html`
-- **html** files can be requested with or without the extension `html`
-- **directories** list their content UwU (note that if you have `somename.html` and `somename/*` in the same level, the directory will have precedence, sorry about that)
-- **`/*`** list `content/`'s content
+- ~~**html** files can be requested with or without the extension `html`~~ was not a good idea
+- **directories** list their content UwU ~~(note that if you have `somename.html` and `somename/*` in the same level, the directory will have precedence, sorry about that)~~
+- **`/*`** list `<serving_directory>/`'s content
 - Files with extension `html`, `txt`, `css`, `js`, `xml` and `rss` are treated as text file
 - Everything else is treated as binary files
 - appending `.thumbnail` to a resource will fetch a thumbnail instead (dunno what happens if you fetch the thumbnail of something that isn't an image, ask `convert`)
