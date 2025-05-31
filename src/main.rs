@@ -89,7 +89,8 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
         match ext {
             Some("jpg")
             | Some("png")
-            | Some("gif") => {
+            | Some("gif")
+            | Some("ico") => {
                 body.push_str(&format!(
                     "<div class=\"thumbnail-container\">\
                         <img src=\"/{}.thumbnail\" alt=\"preview\">\
