@@ -126,7 +126,8 @@ fn get_no_ext(filepath: &str) -> Result<Response<Body>, Infallible> {
     if Path::new(&filepath).is_dir() {
         return get_dir(&filepath);
     } else {
-        return get_text_file(&format!("{}.html", &filepath));
+        // Useful having it returning the actual text file, for example with LICENSE etc.
+        return get_text_file(&&filepath);
     }
 
 }
