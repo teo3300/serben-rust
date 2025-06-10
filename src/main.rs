@@ -39,7 +39,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
     println!("GET: [dir] {}", filepath);
     let path = Path::new(&filepath);
     let mut body = String::new();
-    body.push_str("<!DOCTYPE html><head><style>
+    body.push_str("<!DOCTYPE html><html><head><style>
     .thumbnail-container {
         width: 200px;
         height: 200px;
