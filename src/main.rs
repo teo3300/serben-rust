@@ -16,14 +16,15 @@ static SOURCE_EXTENSION: &str = "source";
 fn get_404(env: &Env) -> Result<Response<Body>, Infallible> {
     let filepath = format!("{}404.html", unsafe {SERVE_ROOT});
     let path = Path::new(&filepath);
-    return if path.exists() {
-        get_text_file(&filepath, env)
-    } else {
-        Ok(Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from("404 Not Found."))
-            .unwrap())
-    }
+    Ok(Response::builder()
+      .status(StatusCode::NOT_FOUND)
+      .body(
+        if path.exists() {
+          get_text_file(&filepath, env)?.into_body()
+        } else {
+          Body::from("404 Not Found.")
+        })
+      .unwrap())
 }
 
 fn server_error <T: std::fmt::Debug>(err: T) -> Result<Response<Body>, Infallible>  {
