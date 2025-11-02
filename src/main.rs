@@ -37,7 +37,7 @@ fn server_error <T: std::fmt::Debug>(err: T) -> Result<Response<Body>, Infallibl
 }
 
 fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
-    println!("GET: [dir] {}", filepath);
+    println!("GET: [ dir] {}", filepath);
     let path = Path::new(&filepath);
     let mut body = String::new();
     body.push_str("<!DOCTYPE html><html><head><style>
@@ -115,7 +115,7 @@ fn get_text_file(filepath: &str, env:&Env) -> Result<Response<Body>, Infallible>
     let extension = Path::new(filepath).extension().unwrap_or_default().to_str().unwrap_or_default();
     let mime = env.get_mime(extension);
 
-    println!("GET: [{:>3}] {}", extension, filepath);
+    println!("GET: [{:>4}] {}", extension, filepath);
     let path = Path::new(&filepath);
     return if path.exists() {
         match fs::read_to_string(&filepath) {
@@ -144,7 +144,7 @@ fn get_no_ext(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
 }
 
 fn get_binary_file(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
-    println!("GET: [bin] {}",filepath);
+    println!("GET: [ bin] {}",filepath);
 
     return if Path::new(&filepath).exists() {
         match fs::read(&filepath) {
@@ -163,7 +163,7 @@ fn get_binary_file(filepath: &str, env: &Env) -> Result<Response<Body>, Infallib
 use std::process::Command;
 
 fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
-    // println!("? GET: [tmb] {}", filepath);
+    // println!("? GET: [ tmb] {}", filepath);
     let original_filepath = filepath.strip_suffix(&format!(".{}", THUMBNAIL_EXTENSION)).unwrap_or(filepath);
 
     if !Path::new(original_filepath).exists() {
@@ -213,10 +213,10 @@ async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, 
     let path = req.uri().path();
 
     return match path {
-        "/" => get_no_ext(format!("{}index", unsafe { SERVE_ROOT }).as_str(), env),
+        "/" => get_404(env),                                  // not redirecting too much of an hassle
         "/*" => get_dir(unsafe { SERVE_ROOT }),
-        "/.cache" => get_404(env),                                  // Return 404 when listing cache
-        path if path.starts_with("/.cache/") => get_404(env), // Return 404 for any path starting with "/thumbnails"
+        "/.cache" => get_404(env),                            // Return 404 when listing cache
+        path if path.starts_with("/.cache/") => get_404(env), // Return 404 for any path starting with "/.cache"
         _ => {
             let filename = &path["/".len()..];
             let filepath = format!("{}{}", unsafe { SERVE_ROOT }, filename);
@@ -266,6 +266,8 @@ async fn main() {
     });
 
     let server = Server::bind(&addr).serve(make_svc);
+
+    
 
     println!("Server running on http://{}/* with SERVE_ROOT: {}", addr, unsafe { SERVE_ROOT });
 
