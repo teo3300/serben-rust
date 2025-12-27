@@ -121,8 +121,8 @@ fn get_text_file(filepath: &str, env:&Env) -> Result<Response<Body>, Infallible>
         match fs::read_to_string(&filepath) {
             Ok(content) => 
                 Ok(Response::builder()
-                    .header(CACHE_CONTROL, "public, max-age=600")
-                    .header(CONTENT_TYPE, format!("text/{}", mime))
+                    .header(CACHE_CONTROL, "public, max-age=0")
+                    .header(CONTENT_TYPE, format!("text/{}; charset=utf-8", mime))
                     .body(Body::from(content))
                     .unwrap()),
             Err(err) => server_error(err),
@@ -188,7 +188,7 @@ fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible
     }
 
     // Use ImageMagick to resize the image and save it to the thumbnail path
-    let mut command = Command::new("convert");
+    let mut command = Command::new("magick");
     command.arg(original_filepath)
         .arg("-resize")
         .arg("10%")
@@ -197,7 +197,7 @@ fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible
         .arg("-resize")
         .arg("500x500>")
         .arg("-quality")
-        .arg("20%")
+        .arg("80%")
         .arg(&thumbnail_path);
 
     if let Err(err) = command.status() {

@@ -1,5 +1,5 @@
 # Builder container
-FROM rust:1.71 AS builder
+FROM rust:1.82 AS builder
 
 WORKDIR /usr/src/rust-serben
 
@@ -8,7 +8,7 @@ COPY . .
 RUN cargo install --path .
 
 # Deploy container
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update 
 RUN rm -rf /var/lib/apt/lists/*
