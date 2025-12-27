@@ -13,6 +13,7 @@ Serve resources in the `<serving_directory>/` folder
 - Everything else is treated as binary files
 - appending `.thumbnail` to a resource will fetch a thumbnail instead (dunno what happens if you fetch the thumbnail of something that isn't an image, ask `convert`)
 - appending `.source` will force to load the file as text
+- `md` files are converted on the fly using `pandoc` and served as `html`
 
 ## Installation and running
 ### Bare metal
@@ -43,6 +44,18 @@ I use traefik for routing and certificate management, on the network `${USER}_fr
 
 Alternatively do fancy stuff
 
+## Markdown files styling
+
+All markdown files refer to `<serving_directory>/.style.md.css` for basic styling, add rules to this file to have a common style across all markdown files
+
+## Cache
+
+All thumbnails and markdown conversion reside in `<serving_directory>/.cache/`
+
 ## convert
 
 I really hope `convert` doesn't have any vulnerability
+
+## pandoc
+
+See [convert](#convert)

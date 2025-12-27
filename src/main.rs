@@ -12,6 +12,7 @@ use server_env::Env;
 static mut SERVE_ROOT: &str = ""; // Make SERVE_ROOT mutable and set it dynamically
 static THUMBNAIL_EXTENSION: &str = "thumbnail";
 static SOURCE_EXTENSION: &str = "source";
+static MARKDOWN_EXTENSION: &str = "md";
 
 fn get_404(env: &Env) -> Result<Response<Body>, Infallible> {
     let filepath = format!("{}404.html", unsafe {SERVE_ROOT});
@@ -121,6 +122,7 @@ fn get_text_file(filepath: &str, env:&Env) -> Result<Response<Body>, Infallible>
         match fs::read_to_string(&filepath) {
             Ok(content) => 
                 Ok(Response::builder()
+                    // Do not cache text file
                     .header(CACHE_CONTROL, "public, max-age=0")
                     .header(CONTENT_TYPE, format!("text/{}; charset=utf-8", mime))
                     .body(Body::from(content))
@@ -150,6 +152,7 @@ fn get_binary_file(filepath: &str, env: &Env) -> Result<Response<Body>, Infallib
         match fs::read(&filepath) {
             Ok(content) => 
                 Ok(Response::builder()
+                    // Cache binary files for one hour
                     .header(CACHE_CONTROL, "public, max-age=3600")
                     .body(Body::from(content))
                     .unwrap()),
@@ -162,6 +165,8 @@ fn get_binary_file(filepath: &str, env: &Env) -> Result<Response<Body>, Infallib
 
 use std::process::Command;
 
+// TODO: try merging these into a single function or even a function using closures
+//       to prototype the procedure
 fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
     // println!("? GET: [ tmb] {}", filepath);
     let original_filepath = filepath.strip_suffix(&format!(".{}", THUMBNAIL_EXTENSION)).unwrap_or(filepath);
@@ -208,6 +213,45 @@ fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible
     get_binary_file(&thumbnail_path, env)
 }
 
+fn get_markdown(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
+    println!("GET: [ md ] {}", filepath);
+
+    if !Path::new(filepath).exists() {
+        return get_404(env);
+    }
+
+    // Construct the processed path
+    let md_dir = format!("{}.cache/processed_md/", unsafe { SERVE_ROOT });
+    let md_path = format!("{}{}.html", md_dir, filepath.strip_prefix(unsafe { SERVE_ROOT }).unwrap().replace("/","_"));
+
+    // Ensure the thumbnail directory exists
+    if !Path::new(&md_dir).exists() {
+        if let Err(err) = fs::create_dir_all(&md_dir) {
+            return server_error(err);
+        }
+    }
+
+    //// Check if the thumbnail already exists
+    //if Path::new(&md_path).exists() {
+    //    // Serve the generated thumbnail
+    //    return get_binary_file(&md_path, env);
+    //}
+
+    // Use ImageMagick to resize the image and save it to the thumbnail path
+    let mut command = Command::new("pandoc");
+    command.arg(filepath)
+        .arg("-s")
+        .arg("-o")
+        .arg(&md_path)
+        .arg("--css=/.style.md.css");
+
+    if let Err(err) = command.status() {
+        return server_error(err);
+    }
+
+    get_text_file(&md_path, env)
+}
+
 async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, Infallible> {
     let env = &env;
     let path = req.uri().path();
@@ -226,13 +270,14 @@ async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, 
                     | Some("css")
                     | Some("js")
                     | Some("txt")
-                    | Some("md")
+                    //| Some("md")
                     | Some("csv")
                     | Some("ics")
                     | Some("xml")
                     | Some("htm")
                     | Some("rss") => get_text_file(&filepath, env),
                     Some(ext) if ext == THUMBNAIL_EXTENSION => get_thumbnail(&filepath, env),
+                    Some(ext) if ext == MARKDOWN_EXTENSION => get_markdown(&filepath, env),
                     Some(ext) if ext == SOURCE_EXTENSION => get_text_file(
                         &filepath.strip_suffix(&format!(".{}", SOURCE_EXTENSION)).unwrap(), env),
                     _ => get_binary_file(&filepath, env),
