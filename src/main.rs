@@ -108,7 +108,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             }
         }
     }
-    body.push_str("</body><p> - Source code available at - </p><footer><a href=\"https://github.com/teo3300/serben-rust\">serben-rust</a></footer></html>");
+    body.push_str("</body><footer><p> - Source code available at - </p><a href=\"https://github.com/teo3300/serben-rust\">serben-rust</a></footer></html>");
     return Ok(Response::new(Body::from(body)));
 }
 
