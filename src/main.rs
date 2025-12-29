@@ -108,7 +108,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             }
         }
     }
-    body.push_str("</body><p>- Source code available at -</p><footer><a href=\"https://github.com/teo3300/serben-rust\">serben-rust<a/><footer/></html>");
+    body.push_str("</body><p> - Source code available at - </p><footer><a href=\"https://github.com/teo3300/serben-rust\">serben-rust</a></footer></html>");
     return Ok(Response::new(Body::from(body)));
 }
 
@@ -232,10 +232,10 @@ fn get_markdown(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible>
     }
 
     //// Check if the thumbnail already exists
-    //if Path::new(&md_path).exists() {
-    //    // Serve the generated thumbnail
-    //    return get_binary_file(&md_path, env);
-    //}
+    if Path::new(&md_path).exists() {
+        // Serve the generated thumbnail
+        return get_binary_file(&md_path, env);
+    }
 
     // Use ImageMagick to resize the image and save it to the thumbnail path
     let mut command = Command::new("pandoc");
