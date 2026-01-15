@@ -19,7 +19,8 @@ macro_rules! mime_map_init_macro{
 impl Env {
     pub fn new() -> Self {
         Self { mime_map: mime_map_init_macro!(
-            "js" => "javascript"
+            "js" => "text/javascript",
+            "json" => "application/json"
         ) }
     }
 

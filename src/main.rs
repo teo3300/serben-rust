@@ -55,7 +55,12 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
         max-height: 100%;
         max-width: 100%;
     }
-</style></head><body>");
+</style>
+<link rel=\"stylesheet\" href=\"/.style.css\">
+</head><body>");
+    // TODO: consider adding multiple css in the directory tree to have cascading style on those files too
+    //       /.style.css, /<lvl1>/.style.css, /<lvl1>/<lvl2>/.style.css and condition to add if they exist
+    //       to avoid too many 404
     body.push_str(&format!(
         "<h1>Index: /{}</h1>",
         path.to_str().unwrap().strip_prefix(unsafe { SERVE_ROOT }).unwrap()
@@ -124,7 +129,7 @@ fn get_text_file(filepath: &str, env:&Env) -> Result<Response<Body>, Infallible>
                 Ok(Response::builder()
                     // Do not cache text file
                     .header(CACHE_CONTROL, "public, max-age=0")
-                    .header(CONTENT_TYPE, format!("text/{}; charset=utf-8", mime))
+                    .header(CONTENT_TYPE, format!("{}; charset=utf-8", mime))
                     .body(Body::from(content))
                     .unwrap()),
             Err(err) => server_error(err),
@@ -244,6 +249,8 @@ fn get_markdown(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible>
         .arg("-o")
         .arg(&md_path)
         .arg("--css=/.style.md.css");
+
+    // TODO:
 
     if let Err(err) = command.status() {
         return server_error(err);

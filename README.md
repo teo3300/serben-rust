@@ -44,6 +44,10 @@ I use traefik for routing and certificate management, on the network `${USER}_fr
 
 Alternatively do fancy stuff
 
+## Directory styling
+
+All directories refer to `<serving_directory>/.style.css` for basic styling, add rules to this file to have a common style across all directory listing
+
 ## Markdown files styling
 
 All markdown files refer to `<serving_directory>/.style.md.css` for basic styling, add rules to this file to have a common style across all markdown files
