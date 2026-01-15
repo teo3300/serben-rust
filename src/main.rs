@@ -282,6 +282,7 @@ async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, 
                     | Some("ics")
                     | Some("xml")
                     | Some("htm")
+                    | Some("json")
                     | Some("rss") => get_text_file(&filepath, env),
                     Some(ext) if ext == THUMBNAIL_EXTENSION => get_thumbnail(&filepath, env),
                     Some(ext) if ext == MARKDOWN_EXTENSION => get_markdown(&filepath, env),
