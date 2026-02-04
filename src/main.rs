@@ -298,8 +298,12 @@ async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, 
     }
 }
 
+// Shutdown with Ctrl+C, with single task, should improve later
+use tokio::signal;
+
 #[tokio::main]
-async fn main() {
+// Return type: black magic
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -320,11 +324,18 @@ async fn main() {
 
     let server = Server::bind(&addr).serve(make_svc);
 
-    
-
     println!("Server running on http://{}/* with SERVE_ROOT: {}", addr, unsafe { SERVE_ROOT });
+    
+    println!("Press Ctrl+C to stop.");
 
-    if let Err(e) = server.await {
-        eprintln!("Server error: {}", e);
-    }
+    let graceful = server.with_graceful_shutdown(async {
+        signal::ctrl_c()
+        .await
+        .expect("failed to listen for ctrl+c");
+    });
+
+    graceful.await?;
+
+    Ok(())
+
 }
