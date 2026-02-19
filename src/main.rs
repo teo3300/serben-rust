@@ -33,12 +33,12 @@ fn server_error <T: std::fmt::Debug>(err: T) -> Result<Response<Body>, Infallibl
         .status(StatusCode::INTERNAL_SERVER_ERROR)
         .body(Body::from("Internal server error."))
         .unwrap());
-    println!("Error: {:?}", err);
-    return ret_val;
+    println!("Error: {err:?}");
+    ret_val
 }
 
 fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
-    println!("GET: [ dir] {}", filepath);
+    println!("GET: [ dir] {filepath}");
     let path = Path::new(&filepath);
     let mut body = String::new();
     body.push_str("<!DOCTYPE html><html><head><style>
@@ -66,17 +66,12 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
         path.to_str().unwrap().strip_prefix(unsafe { SERVE_ROOT }).unwrap()
     ));
     let parent = match path.parent() {
-        Some(p) => match p.to_str().unwrap().strip_prefix(unsafe { SERVE_ROOT }) {
-            Some(p) => p,
-            None => "*",
-        },
+        Some(p) => p.to_str().unwrap().strip_prefix(unsafe { SERVE_ROOT }).unwrap_or("*"),
         None => Path::new("/").to_str().unwrap(),
     };
-    body.push_str(&format!("<a href=\"/{}\">..</a><br>", parent));
-    let mut entries = Vec::from_iter(fs::read_dir(&path).unwrap());
-    entries.sort_by(
-        |a, b|
-        a.as_ref().unwrap().file_name().cmp(&b.as_ref().unwrap().file_name()));
+    body.push_str(&format!("<a href=\"/{parent}\">..</a><br>"));
+    let mut entries = Vec::from_iter(fs::read_dir(path).unwrap());
+    entries.sort_by_key(|k| k.as_ref().unwrap().file_name());
     for entry in entries {
         let entry = entry.unwrap();
         let filename = entry.file_name();
@@ -85,7 +80,7 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
         let path = path.to_str().unwrap().strip_prefix(unsafe { SERVE_ROOT }).unwrap();
 
         let case_ext;
-        let ext = match filename.split('.').last() {
+        let ext = match filename.split('.').next_back() {
             Some(ext) => {
                 case_ext = ext.to_lowercase();
                 Some(case_ext.as_str())
@@ -100,36 +95,34 @@ fn get_dir(filepath: &str) -> Result<Response<Body>, Infallible> {
             | Some("ico") => {
                 body.push_str(&format!(
                     "<div class=\"thumbnail-container\">\
-                        <img src=\"/{}.thumbnail\" alt=\"preview\">\
+                        <img src=\"/{path}.thumbnail\" alt=\"preview\">\
                     </div>\
-                    <a href=\"/{}\">{}</a><br>",
-                    path, path, filename
-                ));
+                    <a href=\"/{path}\">{filename}</a><br>"));
             }
             _ => {
                 if !filename.starts_with('.') {
-                    body.push_str(&format!("<a href=\"/{}\">{}</a><br>", path, filename));
+                    body.push_str(&format!("<a href=\"/{path}\">{filename}</a><br>"));
                 }
             }
         }
     }
     body.push_str("</body><footer><p> - Source code available at - </p><a href=\"https://github.com/teo3300/serben-rust\">serben-rust</a></footer></html>");
-    return Ok(Response::new(Body::from(body)));
+    Ok(Response::new(Body::from(body)))
 }
 
 fn get_text_file(filepath: &str, env:&Env) -> Result<Response<Body>, Infallible> {
     let extension = Path::new(filepath).extension().unwrap_or_default().to_str().unwrap_or_default();
     let mime = env.get_mime(extension);
 
-    println!("GET: [{:>4}] {}", extension, filepath);
+    println!("GET: [{extension:>4}] {filepath}");
     let path = Path::new(&filepath);
-    return if path.exists() {
-        match fs::read_to_string(&filepath) {
+    if path.exists() {
+        match fs::read_to_string(filepath) {
             Ok(content) => 
                 Ok(Response::builder()
                     // Do not cache text file
                     .header(CACHE_CONTROL, "public, max-age=0")
-                    .header(CONTENT_TYPE, format!("{}; charset=utf-8", mime))
+                    .header(CONTENT_TYPE, format!("{mime}; charset=utf-8"))
                     .body(Body::from(content))
                     .unwrap()),
             Err(err) => server_error(err),
@@ -142,19 +135,19 @@ fn get_text_file(filepath: &str, env:&Env) -> Result<Response<Body>, Infallible>
 fn get_no_ext(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
 
     if Path::new(&filepath).is_dir() {
-        return get_dir(&filepath);
+        get_dir(filepath)
     } else {
         // Useful having it returning the actual text file, for example with LICENSE etc.
-        return get_text_file(&filepath, env);
+        get_text_file(filepath, env)
     }
 
 }
 
 fn get_binary_file(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
-    println!("GET: [ bin] {}",filepath);
+    println!("GET: [ bin] {filepath}");
 
-    return if Path::new(&filepath).exists() {
-        match fs::read(&filepath) {
+    if Path::new(&filepath).exists() {
+        match fs::read(filepath) {
             Ok(content) => 
                 Ok(Response::builder()
                     // Cache binary files for one hour
@@ -174,7 +167,7 @@ use std::process::Command;
 //       to prototype the procedure
 fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
     // println!("? GET: [ tmb] {}", filepath);
-    let original_filepath = filepath.strip_suffix(&format!(".{}", THUMBNAIL_EXTENSION)).unwrap_or(filepath);
+    let original_filepath = filepath.strip_suffix(&format!(".{THUMBNAIL_EXTENSION}")).unwrap_or(filepath);
 
     if !Path::new(original_filepath).exists() {
         return get_404(env);
@@ -219,7 +212,7 @@ fn get_thumbnail(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible
 }
 
 fn get_markdown(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible> {
-    println!("GET: [ md ] {}", filepath);
+    println!("GET: [ md ] {filepath}");
 
     if !Path::new(filepath).exists() {
         return get_404(env);
@@ -262,22 +255,21 @@ fn get_markdown(filepath: &str, env: &Env) -> Result<Response<Body>, Infallible>
 async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, Infallible> {
     let env = &env;
     let path = req.uri().path();
+    let filename = &path["/".len()..];
+    let filepath = format!("{}{}", unsafe { SERVE_ROOT }, filename);
 
-    return match path {
-        "/" => get_404(env),                                  // not redirecting too much of an hassle
+    match path {
+        "/" => get_text_file(&format!("{}index.html", &filepath), env),// get_404(env),                                  // not redirecting too much of an hassle
         "/*" => get_dir(unsafe { SERVE_ROOT }),
         "/.cache" => get_404(env),                            // Return 404 when listing cache
         path if path.starts_with("/.cache/") => get_404(env), // Return 404 for any path starting with "/.cache"
         _ => {
-            let filename = &path["/".len()..];
-            let filepath = format!("{}{}", unsafe { SERVE_ROOT }, filename);
             if let Some(extension) = Path::new(&filepath).extension() {
                 match extension.to_str() {
                     Some("html")
                     | Some("css")
                     | Some("js")
                     | Some("txt")
-                    //| Some("md")
                     | Some("csv")
                     | Some("ics")
                     | Some("xml")
@@ -287,7 +279,7 @@ async fn handle_request(req: Request<Body>, env: Env) -> Result<Response<Body>, 
                     Some(ext) if ext == THUMBNAIL_EXTENSION => get_thumbnail(&filepath, env),
                     Some(ext) if ext == MARKDOWN_EXTENSION => get_markdown(&filepath, env),
                     Some(ext) if ext == SOURCE_EXTENSION => get_text_file(
-                        &filepath.strip_suffix(&format!(".{}", SOURCE_EXTENSION)).unwrap(), env),
+                        filepath.strip_suffix(&format!(".{SOURCE_EXTENSION}")).unwrap(), env),
                     _ => get_binary_file(&filepath, env),
                     // TODO: dang, I am really tempted to add arbitrary shell command execution here
                 }
